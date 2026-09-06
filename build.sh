@@ -78,7 +78,9 @@ MAKE_CMD+="LLVM=1 "
 MAKE_CMD+="LLVM_IAS=1 "
 MAKE_CMD+="ARCH=arm64 "
 MAKE_CMD+="O=out "
-MAKE_CMD+="-j$(nproc --all)"
+MAKE_CMD+="-j$(nproc --all) "
+MAKE_CMD+="KBUILD_BUILD_USER=$MODEL "
+MAKE_CMD+="KBUILD_BUILD_HOST=rainbow"
 
 if $RECOVERY; then
     FRAGMENTS+="recovery.config "

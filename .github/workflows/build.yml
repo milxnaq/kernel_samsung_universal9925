@@ -1,0 +1,65 @@
+name: Kernel Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - sixteen
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      TZ: Asia/Seoul
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [r0s, g0s, b0s, r11s]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: sixteen
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex cpio kmod \
+            libssl-dev libelf-dev dwarves \
+            brotli zip zstd tar lz4 xz-utils \
+            binutils-aarch64-linux-gnu ccache \
+            python3 python3-pip rsync curl git make gcc clang lld
+
+      - name: Build kernel
+        run: |
+          ./build.sh -m ${{ matrix.model }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kernel-${{ matrix.model }}
+          path: build/out/${{ matrix.model }}/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set Commit hash
+        id: vars
+        run: echo "commit_hash=$(git rev-parse --short=8 HEAD)" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: Kernel-${{ steps.vars.outputs.commit_hash }}
+          name: Kernel-${{ steps.vars.outputs.commit_hash }}
+          generate_release_notes: true
+          files: artifacts/*.zip
